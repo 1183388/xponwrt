@@ -46,10 +46,6 @@ define Build/an7581-chainloader
   cat $(STAGING_DIR_IMAGE)/an7581_$1-chainload-u-boot.itb >> $@
 endef
 
-AIROHA_USB_STORAGE_PACKAGES := \
-  block-mount kmod-usb-storage kmod-usb-storage-uas \
-  kmod-fs-ext4 kmod-fs-vfat kmod-fs-exfat
-
 define Device/FitImageLzma
 	KERNEL_SUFFIX := -uImage.itb
 	KERNEL = kernel-bin | lzma | fit lzma $$(KDIR)/image-$$(DEVICE_DTS).dtb
@@ -152,7 +148,7 @@ define Device/gemtek_xg2010g
 	append-metadata
   DEVICE_PACKAGES := kmod-gpio-button-hotplug kmod-leds-gpio \
 	kmod-phy-airoha-en8811h kmod-phy-realtek rtl826x-firmware \
-	kmod-airoha-en7572 kmod-airoha-xpon airoha-ponctl i2c-tools \
+	kmod-airoha-en7572 kmod-airoha-xpon airoha-ponctl airoha-pond \
 	fitblk nand-utils ubi-utils
 endef
 TARGET_DEVICES += gemtek_xg2010g
@@ -193,7 +189,7 @@ define Device/fiberhome_hg5382a
 	append-metadata
   # The external 2.5G copper port uses MaxLinear GPY211.
   DEVICE_PACKAGES := kmod-gpio-button-hotplug kmod-leds-gpio kmod-phy-maxlinear \
-    kmod-airoha-paged-bosa kmod-airoha-xpon airoha-ponctl i2c-tools \
+    kmod-airoha-paged-bosa kmod-airoha-xpon airoha-ponctl airoha-pond \
     fitblk nand-utils ubi-utils
 endef
 TARGET_DEVICES += fiberhome_hg5382a
@@ -213,7 +209,7 @@ define Device/fiberhome_hg5585f-common
   IMAGES := sysupgrade.itb
   # PON and MT7916D read per-device calibration from factory UBI NVMEM cells.
   DEVICE_PACKAGES := kmod-gpio-button-hotplug kmod-leds-gpio kmod-usb3 \
-    kmod-airoha-paged-bosa kmod-airoha-xpon airoha-ponctl i2c-tools \
+    kmod-airoha-paged-bosa kmod-airoha-xpon airoha-ponctl airoha-pond \
 	 kmod-mt7915e kmod-mt7916-firmware wpad-openssl \
 	 fitblk nand-utils ubi-utils $(AIROHA_USB_STORAGE_PACKAGES)
 endef
@@ -273,23 +269,21 @@ define Device/znxt_zn515xg-d
   DEVICE_DTS := an7581-znxt-zn515xg-d
   DEVICE_PACKAGES := kmod-gpio-button-hotplug kmod-leds-gpio \
     kmod-usb3 kmod-usb-ledtrig-usbport kmod-phy-airoha-en8811h \
-    kmod-airoha-en7572 kmod-airoha-xpon airoha-ponctl i2c-tools \
+    kmod-airoha-en7572 kmod-airoha-xpon airoha-ponctl airoha-pond \
     kmod-mt7915e kmod-mt7916-firmware znxt-zn515-mt7916-eeprom \
-    wpad-openssl autocore \
+    wpad-openssl \
     nand-utils ubi-utils $(AIROHA_USB_STORAGE_PACKAGES)
   DEVICE_PACKAGES += fitblk
 endef
 TARGET_DEVICES += znxt_zn515xg-d
 
-# ZN504XG-D provides four Ethernet ports and USB1; ZN515 adds radio and USB2.
 define Device/znxt_zn504xg-d
   $(call Device/znxt_zn50xg-d-common)
   DEVICE_MODEL := ZN504XG-D
   DEVICE_DTS := an7581-znxt-zn504xg-d
   DEVICE_PACKAGES := kmod-gpio-button-hotplug kmod-leds-gpio \
-    kmod-usb3 kmod-usb-ledtrig-usbport kmod-phy-airoha-en8811h \
-    kmod-airoha-en7572 kmod-airoha-xpon airoha-ponctl i2c-tools \
-    autocore nand-utils ubi-utils $(AIROHA_USB_STORAGE_PACKAGES)
+    kmod-phy-airoha-en8811h kmod-airoha-en7572 kmod-airoha-xpon \
+    airoha-ponctl airoha-pond nand-utils ubi-utils
   DEVICE_PACKAGES += fitblk
 endef
 TARGET_DEVICES += znxt_zn504xg-d
@@ -316,7 +310,7 @@ define Device/unionman_ung00a
 	append-metadata
   DEVICE_PACKAGES := kmod-gpio-button-hotplug kmod-leds-gpio \
 	 kmod-phy-airoha-en8811h kmod-airoha-en7572 kmod-airoha-xpon \
-	 airoha-ponctl i2c-tools autocore fitblk nand-utils ubi-utils
+	 airoha-ponctl airoha-pond fitblk nand-utils ubi-utils
 endef
 TARGET_DEVICES += unionman_ung00a
 
@@ -330,9 +324,8 @@ define Device/nokia_xg-040g-md-common
   DEVICE_PACKAGES := kmod-gpio-button-hotplug kmod-leds-gpio \
     kmod-phy-airoha-en8811h kmod-regulator-userspace-consumer \
     kmod-usb-ledtrig-usbport kmod-usb3 kmod-airoha-en7572 \
-    kmod-airoha-xpon airoha-ponctl i2c-tools \
-    luci-app-iptv \
-    luci-i18n-iptv-zh-cn $(AIROHA_USB_STORAGE_PACKAGES)
+    kmod-airoha-xpon airoha-ponctl airoha-pond \
+    $(AIROHA_USB_STORAGE_PACKAGES)
 endef
 
 define Device/nokia_xg-040g-tf-common
