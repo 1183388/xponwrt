@@ -57,35 +57,79 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Load AN7581 configuration
+      - name: Select only HG5585F CT
         run: |
+          set -e
+
           cp configs/an7581.config .config
 
-          echo "Force selecting FiberHome HG5585F CT..."
+          echo "Original AN7581 device selections:"
+          grep -E '^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_.*=y$' .config || true
 
-          sed -i \
-            's/^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_fiberhome_hg5585f-cu=y$/# CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_fiberhome_hg5585f-cu is not set/' \
-            .config
+          echo
+          echo "Disabling all AN7581 device selections..."
+
+          while IFS= read -r line; do
+            symbol="${line%%=*}"
+
+            if [ -n "$symbol" ]; then
+              sed -i "s/^${symbol}=y$/${symbol}=n/" .config
+            fi
+          done < <(
+            grep -E '^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_.*=y$' .config || true
+          )
+
+          echo
+          echo "Enabling FiberHome HG5585F CT..."
 
           sed -i \
             's/^# CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_fiberhome_hg5585f-ct is not set$/CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_fiberhome_hg5585f-ct=y/' \
             .config
 
+          sed -i \
+            's/^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_fiberhome_hg5585f-ct=n$/CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_fiberhome_hg5585f-ct=y/' \
+            .config
+
           echo
-          echo "HG5585F configuration before defconfig:"
-          grep -E 'CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_fiberhome_hg5585f-(ct|cu)' .config || true
+          echo "AN7581 device selections after modification:"
+          grep -E '^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_.*=' .config || true
 
       - name: Configure
         run: |
+          set -e
+
           make defconfig
 
           echo
-          echo "Selected target:"
+          echo "Target:"
           grep '^CONFIG_TARGET_airoha' .config || true
 
           echo
-          echo "Selected HG5585F device:"
-          grep -E 'CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_fiberhome_hg5585f-(ct|cu)' .config || true
+          echo "AN7581 device selections after defconfig:"
+          grep -E '^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_.*=y$' .config || true
+
+          DEVICE_COUNT="$(
+            grep -E '^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_.*=y$' .config \
+            | wc -l
+          )"
+
+          echo
+          echo "Enabled AN7581 device count: $DEVICE_COUNT"
+
+          if [ "$DEVICE_COUNT" -ne 1 ]; then
+            echo "ERROR: Expected exactly one enabled AN7581 device."
+            exit 1
+          fi
+
+          if ! grep -q \
+            '^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_fiberhome_hg5585f-ct=y$' \
+            .config; then
+            echo "ERROR: HG5585F CT is not the selected device."
+            exit 1
+          fi
+
+          echo
+          echo "Verified: only FiberHome HG5585F CT is enabled."
 
       - name: Download sources
         run: |
@@ -96,20 +140,36 @@ jobs:
           echo "CPU threads: $(nproc)"
           make -j$(nproc) V=s
 
-      - name: Check HG5585F CT sysupgrade image
+      - name: Check HG5585F CT firmware
         run: |
           set -e
 
-          IMAGE="bin/targets/airoha/an7581/ponwrt-airoha-an7581-fiberhome_hg5585f-ct-squashfs-sysupgrade.itb"
+          IMAGE_DIR="bin/targets/airoha/an7581"
 
-          echo "Checking image:"
-          echo "$IMAGE"
+          echo "Looking for HG5585F CT sysupgrade image..."
 
-          test -f "$IMAGE"
+          IMAGE="$(
+            find "$IMAGE_DIR" \
+              -maxdepth 1 \
+              -type f \
+              -name '*fiberhome_hg5585f-ct-squashfs-sysupgrade.itb' \
+              | head -n 1
+          )"
+
+          if [ -z "$IMAGE" ]; then
+            echo "ERROR: HG5585F CT sysupgrade image was not found."
+            exit 1
+          fi
 
           echo
-          echo "Image information:"
+          echo "Found image:"
+          echo "$IMAGE"
+
+          echo
           ls -lh "$IMAGE"
+
+          echo
+          echo "File type:"
           file "$IMAGE"
 
           echo
@@ -122,12 +182,17 @@ jobs:
 
           mkdir -p artifact
 
-          IMAGE="bin/targets/airoha/an7581/ponwrt-airoha-an7581-fiberhome_hg5585f-ct-squashfs-sysupgrade.itb"
+          IMAGE="$(
+            find bin/targets/airoha/an7581 \
+              -maxdepth 1 \
+              -type f \
+              -name '*fiberhome_hg5585f-ct-squashfs-sysupgrade.itb' \
+              | head -n 1
+          )"
 
           cp "$IMAGE" artifact/
 
           cd artifact
-
           sha256sum *.itb > SHA256SUMS
 
           echo
