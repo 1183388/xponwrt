@@ -1,1 +1,103 @@
 
+name: Build PonWrt
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          echo "Before cleanup:"
+          df -h
+
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache
+
+          echo "After cleanup:"
+          df -h
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            clang \
+            flex \
+            bison \
+            g++ \
+            gawk \
+            gettext \
+            git \
+            libncurses-dev \
+            libssl-dev \
+            python3 \
+            python3-setuptools \
+            rsync \
+            unzip \
+            zlib1g-dev \
+            file \
+            wget \
+            curl \
+            swig \
+            time \
+            libelf-dev
+
+      - name: Update feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Load AN7581 configuration
+        run: |
+          cp configs/an7581.config .config
+
+          echo "Checking HG5585F CT configuration..."
+          grep -i "fiberhome_hg5585f" .config || true
+
+      - name: Configure
+        run: |
+          make defconfig
+
+          echo "Selected target:"
+          grep '^CONFIG_TARGET_airoha' .config || true
+
+          echo "Selected device:"
+          grep 'CONFIG_TARGET.*fiberhome_hg5585f' .config || true
+
+      - name: Download sources
+        run: |
+          make download -j$(nproc)
+
+      - name: Build firmware
+        run: |
+          echo "CPU threads: $(nproc)"
+          make -j$(nproc) V=s
+
+      - name: Show build output
+        if: always()
+        run: |
+          echo "Build directory:"
+          ls -lah bin/targets/airoha/an7581/ || true
+
+          echo
+          echo "Images:"
+          find bin/targets/airoha/an7581/ -maxdepth 1 -type f -printf '%f\n' 2>/dev/null || true
+
+      - name: Upload firmware
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ponwrt-an7581-hg5585f-ct
+          path: |
+            bin/targets/airoha/an7581/**
+          if-no-files-found: error
