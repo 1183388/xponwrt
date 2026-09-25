@@ -1,4 +1,3 @@
-
 name: Build PonWrt
 
 on:
@@ -61,18 +60,31 @@ jobs:
         run: |
           cp configs/an7581.config .config
 
-          echo "Checking HG5585F CT configuration..."
-          grep -i "fiberhome_hg5585f" .config || true
+          echo "Force selecting FiberHome HG5585F CT..."
+
+          sed -i \
+            's/^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_fiberhome_hg5585f-cu=y$/# CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_fiberhome_hg5585f-cu is not set/' \
+            .config
+
+          sed -i \
+            's/^# CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_fiberhome_hg5585f-ct is not set$/CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_fiberhome_hg5585f-ct=y/' \
+            .config
+
+          echo
+          echo "HG5585F configuration before defconfig:"
+          grep -E 'CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_fiberhome_hg5585f-(ct|cu)' .config || true
 
       - name: Configure
         run: |
           make defconfig
 
+          echo
           echo "Selected target:"
           grep '^CONFIG_TARGET_airoha' .config || true
 
-          echo "Selected device:"
-          grep 'CONFIG_TARGET.*fiberhome_hg5585f' .config || true
+          echo
+          echo "Selected HG5585F device:"
+          grep -E 'CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_fiberhome_hg5585f-(ct|cu)' .config || true
 
       - name: Download sources
         run: |
