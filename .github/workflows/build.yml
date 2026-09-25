@@ -22,6 +22,7 @@ jobs:
           sudo rm -rf /opt/ghc
           sudo rm -rf /opt/hostedtoolcache
 
+          echo
           echo "After cleanup:"
           df -h
 
@@ -95,21 +96,53 @@ jobs:
           echo "CPU threads: $(nproc)"
           make -j$(nproc) V=s
 
-      - name: Show build output
-        if: always()
+      - name: Check HG5585F CT sysupgrade image
         run: |
-          echo "Build directory:"
-          ls -lah bin/targets/airoha/an7581/ || true
+          set -e
+
+          IMAGE="bin/targets/airoha/an7581/ponwrt-airoha-an7581-fiberhome_hg5585f-ct-squashfs-sysupgrade.itb"
+
+          echo "Checking image:"
+          echo "$IMAGE"
+
+          test -f "$IMAGE"
 
           echo
-          echo "Images:"
-          find bin/targets/airoha/an7581/ -maxdepth 1 -type f -printf '%f\n' 2>/dev/null || true
+          echo "Image information:"
+          ls -lh "$IMAGE"
+          file "$IMAGE"
 
-      - name: Upload firmware
+          echo
+          echo "SHA256:"
+          sha256sum "$IMAGE"
+
+      - name: Prepare final artifact
+        run: |
+          set -e
+
+          mkdir -p artifact
+
+          IMAGE="bin/targets/airoha/an7581/ponwrt-airoha-an7581-fiberhome_hg5585f-ct-squashfs-sysupgrade.itb"
+
+          cp "$IMAGE" artifact/
+
+          cd artifact
+
+          sha256sum *.itb > SHA256SUMS
+
+          echo
+          echo "Final artifact:"
+          ls -lh
+
+          echo
+          echo "SHA256SUMS:"
+          cat SHA256SUMS
+
+      - name: Upload HG5585F CT sysupgrade firmware
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: ponwrt-an7581-hg5585f-ct
-          path: |
-            bin/targets/airoha/an7581/**
+          name: ponwrt-hg5585f-ct-sysupgrade
+          path: artifact/**
           if-no-files-found: error
+          retention-days: 30
